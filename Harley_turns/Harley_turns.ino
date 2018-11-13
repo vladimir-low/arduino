@@ -1,7 +1,7 @@
 /*
  * Blinking with turn signals in Ford Mustang style
  * 
- * There is 4 segments LED is used on each side
+ * 4 segments LED is used on each side
  * 
  * STOP signal should be handled immediately. 
  * PD2 (INT0) will be use for this purpose (external interrupt)
@@ -28,15 +28,10 @@
  * 
 */
 
-// Output Pins
-const int leftOut1 = 3;
-const int leftOut2 = 4;
-const int leftOut3 = 5;
-const int leftOut4 = 6;
-const int rightOut1 = 7;
-const int rightOut2 = 8;
-const int rightOut3 = 9;
-const int rightOut4 = 10;
+// Output start pin and LED segments amount
+const int leftOutFirstPin = 3;
+const int rightOutFirstPin = 7;
+const int ledsAmount = 4;
 // Input Pins
 const int leftIn = 0;
 const int rightIn = 1;
@@ -55,123 +50,119 @@ void setup() {
   for (int i=3; i<=10; i++) {
     pinMode(i, OUTPUT);
   }
-  attachInterrupt(digitalPinToInterrupt(brakesIn), brake, RISING);
+  //Interrupts the main loop when HIGH level appears in the pin
+  attachInterrupt(digitalPinToInterrupt(brakeIn), brake, RISING);
 }
 
 void leftOn() {
-  for (int i=1; i<=4; i++) {
-    digitalWrite("leftOut" + i, HIGH);
+  for (int i=0; i<ledsAmount; i++) {
+    digitalWrite(leftOutFirstPin + i, HIGH);
   }
 }
 
 void rightOn() {
-  for (int i=1; i<=4; i++) {
-    digitalWrite("rightOut" + i, HIGH);
+  for (int i=0; i<ledsAmount; i++) {
+    digitalWrite(rightOutFirstPin + i, HIGH);
   }
 }
 
 void leftOff() {
-  for (int i=1; i<=4; i++)
-    digitalWrite("leftOut" + i, LOW);
+  for (int i=0; i<ledsAmount; i++)
+    digitalWrite(leftOutFirstPin + i, LOW);
 }
 
 void rightOff() {
-  for (int i=1; i<=4; i++)
-    digitalWrite("rightOut" + i, LOW);
+  for (int i=0; i<ledsAmount; i++)
+    digitalWrite(rightOutFirstPin + i, LOW);
 }
 
 void leftBlink() {
-  for (int i=1; i<=4; i++) {
-    digitalWrite("leftOut" + i, HIGH);
+  for (int i=0; i<ledsAmount; i++) {
+    digitalWrite(leftOutFirstPin + i, HIGH);
     delay(300);
   }
   delay(100);
+  leftOff();
 }
 
 void rightBlink() {
-  for (int i=1; i<=4; i++) {
-    digitalWrite("rightOut" + i, HIGH);
+  for (int i=0; i<ledsAmount; i++) {
+    digitalWrite(rightOutFirstPin + i, HIGH);
     delay(300);
   }
   delay(100);
+  rightOff();
 }
 
 void hazardFlash() {
-  for (int i=1; i<=4; i++) {
-    digitalWrite("leftOut" + i, HIGH);
-    digitalWrite("rightOut" + i, HIGH);
-    delay(500);
-  }
-  for (int i=1; i<=4; i++) {
-    digitalWrite("leftOut" + i, LOW;
-    digitalWrite("rightOut" + i, LOW);
-    delay(300);
-  }
+  leftOn();
+  rightOn();
+  delay(500);
+  leftOff();
+  rightOff();
+  delay(300);
 }
 
+// Flash rapidly with both sides
 void stopFlash() {
-  for (int i=1; i<=4; i++) {
-    digitalWrite("leftOut" + i, HIGH);
-    digitalWrite("rightOut" + i, HIGH);
+  for (int i=0; i<5; i++) {
+    leftOn();
+    rightOn();
+    delay(120);
+    leftOff();
+    rightOff();
+    delay(80);
   }
-  delay(100);
-  for (int i=1; i<=4; i++) {
-    digitalWrite("leftOut" + i, LOW;
-    digitalWrite("rightOut" + i, LOW);
-  }
-  delay(60);
 }
 
 // Brakes interrupt handling (see table above)
 void brake() {
+  stopFlash();
   isBrake = HIGH;
-  for (i=0; i<3; i++) {
-    stopFlash();
-  }
-  while (isBrake = HIGH) {
-    for (int i==0; i<=5; i++) {
-      isBrake = digitalRead(brakeIn);
-      isLeftTurn = digitalRead(leftIn);
-      isRightTurn = digitalRead(rightIn);
-      delay(10);
-    }
-    // Left turn
-    if ((isLeftTurn = HIGH) && (isRightTurn = LOW)) {
-      rightOn();    
-      leftBlink();
-    }
-    // Right turn 
-    else if ((isRightTurn = HIGH) && (isLeftTurn = LOW)) {
-      leftOn();
-      rightBlink();
-    }
-    // Pure braking
-    else if ((isLeftTurn = LOW) && (isRightTurn = LOW)) {
-      leftOn();
-      rightOn();
-      delay(5000);
-    }   
-  }
-  isBrake = LOW;
 }
 
 void loop() {
   // read the state of turns. Loop is used to eliminate chatter.
-  for (int i==0; i<=5; i++) {
+  for (int i=0; i<=5; i++) {
     isLeftTurn = digitalRead(leftIn);
     isRightTurn = digitalRead(rightIn);
+    isBrake = digitalRead(brakeIn);
     delay(10);
   }
-  // Left turn
-  if ((isLeftTurn = HIGH) && (isRightTurn = LOW)) {
-    leftBlink();
-  }
-  // Right turn 
-  else if ((isRightTurn = HIGH) && (isLeftTurn = LOW)) {
-    rightBlink();
-  }
-  // Hazard warning
-  else if ((isLeftTurn = HIGH) && (isRightTurn = HIGH)) {
-    hazardFlash();
-  }
+  switch (isBrake) {
+    case HIGH: // when brakes are still pressed...
+      // and Left turn
+      if ((isLeftTurn == HIGH) && (isRightTurn == LOW)) {
+        rightOn();
+        leftBlink();
+        break;
+      }
+      // and Right turn
+      else if ((isRightTurn == HIGH) && (isLeftTurn == LOW)) {
+        leftOn();
+        rightBlink();
+        break;
+      }
+      // and No turns
+      else if ((isLeftTurn == LOW) && (isRightTurn == LOW)) {
+        leftOn();
+        rightOn();
+        break;
+      }
+     case LOW: // No braking
+      // Left turn
+      if ((isLeftTurn == HIGH) && (isRightTurn == LOW)) {
+        leftBlink();
+        break;
+      }
+      // Right turn
+      else if ((isRightTurn == HIGH) && (isLeftTurn == LOW)) {
+        rightBlink();
+        break;
+      }
+      // Hazard warning
+      else if ((isLeftTurn == HIGH) && (isRightTurn == HIGH)) {
+        hazardFlash();
+      }
+    }
 }
