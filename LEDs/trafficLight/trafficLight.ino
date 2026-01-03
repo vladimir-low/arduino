@@ -1,7 +1,5 @@
-/* Multiple LED blinking
- with button. Traffic light emulation
- 
- Vladimir Malyarevich, 2015
+/* Smart Traffic Light v2
+   Fixes the "Floating Pin" issue using INPUT_PULLUP.
 */
 
 // --- Constants ---
@@ -24,41 +22,82 @@ void setup() {
   pinMode(greenPin, OUTPUT);
   pinMode(pedWhitePin, OUTPUT);
   pinMode(pedRedPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
+  
+  // FIX: Use INPUT_PULLUP to prevent random noise triggers
+  pinMode(buttonPin, INPUT_PULLUP); 
 }
 
 void loop() {
-  digitalWrite(pedRedPin, HIGH);  // Ped Red light on  
+  // Ensure Pedestrian lights are in "Don't Walk" state during normal traffic
+  digitalWrite(pedWhitePin, LOW);
+  digitalWrite(pedRedPin, HIGH);
 
-  // Traffic light blinking 
-  int interval, buttonState;
-  for (int i=0;i<3;i++) {
-    buttonState = digitalRead(buttonPin);  // Get button state
-    digitalWrite(redPin, HIGH);
-    delay(redInterval);
-    digitalWrite(ylwwPin, HIGH);
-    delay(ylwInterval);
-    digitalWrite(redPin, LOW);
-    digitalWrite(ylwwPin, LOW);
-    digitalWrite(greenPin, HIGH);
-    delay(greenInterval);
-    digitalWrite(greenPin, LOW);
-    digitalWrite(ylwwPin, HIGH);
-    delay(ylwInterval);
-    digitalWrite(ylwwPin, LOW);
+  // 1. CARS: RED LIGHT
+  digitalWrite(redPin, HIGH);
+  if(smartDelay(redInterval)) { runPedestrianMode(); return; }
+
+  // 2. CARS: YELLOW LIGHT
+  digitalWrite(ylwwPin, HIGH);
+  if(smartDelay(ylwInterval)) { runPedestrianMode(); return; } 
+  digitalWrite(ylwwPin, LOW);
+  digitalWrite(redPin, LOW);
+
+  // 3. CARS: GREEN LIGHT
+  digitalWrite(greenPin, HIGH);
+  if(smartDelay(greenInterval)) {
+    delay(2000); 
+    digitalWrite(greenPin, LOW); 
+    runPedestrianMode(); 
+    return; 
   }
+  digitalWrite(greenPin, LOW);
 
-  // Process pedestrian button state:
-  if (buttonState == HIGH) {
-    digitalWrite(redPin, HIGH); // Car red light on
-    digitalWrite(pedRedPin, LOW);  // Ped red light off
-    // blink ped white light
-    for (int x=0;x<=20;x++) {
-      digitalWrite(pedWhitePin, HIGH);
-      delay(pedInterval);
-      digitalWrite(pedWhitePin, LOW);
-      delay(pedInterval);
+  // 4. CARS: YELLOW LIGHT
+  digitalWrite(ylwwPin, HIGH);
+  if(smartDelay(ylwInterval)) { runPedestrianMode(); return; } 
+  digitalWrite(ylwwPin, LOW);
+}
+
+// --- Helper Functions ---
+
+/* smartDelay: Replaces standard delay().
+   Returns TRUE if button was pressed (Active LOW).
+   Returns FALSE if time ran out.
+*/
+bool smartDelay(int duration) {
+  unsigned long startTime = millis();
+  
+  while (millis() - startTime < duration) {
+    // FIX: Check for LOW because we are using INPUT_PULLUP
+    // LOW means the button connects the pin to Ground (Pressed)
+    if (digitalRead(buttonPin) == LOW) {
+      return true; 
     }
   }
-  digitalWrite(redPin, LOW); // Car red light on
- }
+  return false; 
+}
+
+/*
+   The sequence that runs when the button is pressed
+*/
+void runPedestrianMode() {
+  // 1. Safety: Turn off Green/Yellow, Turn on Car Red
+  digitalWrite(greenPin, LOW);
+  digitalWrite(ylwwPin, LOW);
+  digitalWrite(redPin, HIGH); 
+  
+  // 2. Pedestrian Sequence
+  digitalWrite(pedRedPin, LOW); // Ped Red OFF
+  
+  // Blink Pedestrian White Light
+  for (int x = 0; x <= 10; x++) {
+    digitalWrite(pedWhitePin, HIGH);
+    delay(pedInterval); 
+    digitalWrite(pedWhitePin, LOW);
+    delay(pedInterval);
+  }
+  
+  // 3. Reset to safe state (Ped Red ON, Car Red stays on until loop restarts)
+  digitalWrite(pedRedPin, HIGH); 
+  digitalWrite(redPin, LOW);     
+}
