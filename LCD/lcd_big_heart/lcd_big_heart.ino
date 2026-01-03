@@ -1,0 +1,67 @@
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+
+uint8_t bell[8]  = {0x4, 0xe, 0xe, 0xe, 0x1f, 0x0, 0x4};
+uint8_t note[8]  = {0x2, 0x3, 0x2, 0xe, 0x1e, 0xc, 0x0};
+uint8_t clock[8] = {0x0, 0xe, 0x15, 0x17, 0x11, 0xe, 0x0};
+uint8_t heart[8] = {0x0, 0xa, 0x1f, 0x1f, 0xe, 0x4, 0x0};
+uint8_t duck[8]  = {0x0, 0xc, 0x1d, 0xf, 0xf, 0x6, 0x0};
+uint8_t check[8] = {0x0, 0x1 ,0x3, 0x16, 0x1c, 0x8, 0x0};
+uint8_t cross[8] = {0x0, 0x1b, 0xe, 0x4, 0xe, 0x1b, 0x0};
+uint8_t retarrow[8] = {  0x1, 0x1, 0x5, 0x9, 0x1f, 0x8, 0x4};
+
+LiquidCrystal_I2C lcd(0x27,16,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+
+void setup() {
+  // initialize the LCD
+  lcd.begin();
+  lcd.backlight();
+
+  lcd.createChar(0, bell);
+  lcd.createChar(1, note);
+  lcd.createChar(2, clock);
+  lcd.createChar(3, heart);
+  lcd.createChar(4, duck);
+  lcd.createChar(5, check);
+  lcd.createChar(6, cross);
+  lcd.createChar(7, retarrow);
+  lcd.home();
+}
+
+void delayBlink(int _delay) {
+  // Blinks cursor for specified amount of seconds
+  bool blinking = true;
+  for (int i=_delay*2; i>0; i--) {
+    if (blinking) {
+      lcd.noBlink();
+      blinking = false;
+    } else {
+      lcd.blink();
+      blinking = true;
+    }
+    delay(500);
+  }
+}
+
+void drawBigHeart() {
+  lcd.setCursor(7,0);
+  lcd.write(3); lcd.write(3); lcd.print(" "); lcd.write(3); lcd.write(3);
+  lcd.setCursor(6,1);
+  lcd.write(3); lcd.print("  "); lcd.write(3); lcd.print("  "); lcd.write(3);
+  lcd.setCursor(7,2);
+  lcd.write(3); lcd.print("   "); lcd.write(3);
+  lcd.setCursor(9,3);
+  lcd.write(3);
+}
+
+void loop() {
+  lcd.clear();
+  lcd.setCursor(2,1);
+  lcd.print("WE");
+  delay(1000);
+  drawBigHeart();
+  delay(1000);
+  lcd.setCursor(15,2);
+  lcd.print("YOU!");
+  delay(5000);
+}
